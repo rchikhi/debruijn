@@ -77,6 +77,7 @@ unsigned int k=28;
 unsigned int weight_threshold = 0;
 short graph_format = 1;
 bool dont_compute_nodes_abundance = false;
+bool normalize_edges = true;
 
 // hard-coded stuff
 string graph_file_suffix = ".graph";
@@ -274,9 +275,20 @@ void create_edges(large_integer kmer_long_1, large_integer kmer_long_2, unsigned
     bool kmer2_reversed = normalize_kmer(kmer_tight);
     kmer_long_2 = large_kmer_hash_from_tight(kmer_tight,len_tightk_plus_bytesize);
 
+	large_index_integer kmer_long_1_index = get_kmer_number(kmer_long_1);
+	large_index_integer kmer_long_2_index = get_kmer_number(kmer_long_2);
+
     string label = (string)(kmer1_reversed?"R":"F") + (string)(kmer2_reversed?"R":"F");
-    print_edge(get_kmer_number(kmer_long_1),get_kmer_number(kmer_long_2),label,weight);
+    print_edge(kmer_long_1_index,kmer_long_2_index,label,weight);
     nb_edges++;
+
+	// write revcomp normalized edge
+	if (normalize_edges)
+	{
+		string label = (string)(kmer1_reversed?"F":"R") + (string)(kmer2_reversed?"F":"R");
+    	print_edge(kmer_long_2_index,kmer_long_1_index,label,weight);
+	    nb_edges++;
+	}
 }
 
 
@@ -354,7 +366,9 @@ void process_sequence_with(string sequence, unsigned int k, void operation(large
             if (nb_threads!=1 && !is_my_kmer_tight_edition(kmer_tight,k,thread_num,nb_threads,0,1))
                 continue;
 
-            // don't normalize here (because those k+1 mer are edges), we lose the distinction FF/RR and RF/FR then
+            // if we normalize edges (because those k+1 mer are edges), we lose the distinction FF/RR and RF/FR 
+			if (normalize_edges)
+				normalize_kmer(kmer_tight);
 
             large_integer kmer_long=large_kmer_hash_from_tight(kmer_tight,len_tightk_plus_bytesize);
 
@@ -369,7 +383,7 @@ void process_kmers_from_reads_by_doing(const char * reads_file, unsigned int k, 
     unsigned long nb_reads=0;
     char read[MAX_TIGHT_SIZE];
 
-    printf("processing reads (extracting %d-mers)\n",k);
+    printf("processing reads (reading %d-mers)\n",k);
     f_reads=fopen(reads_file,"r");
     if (f_reads==NULL)
     {
@@ -387,6 +401,11 @@ void process_kmers_from_reads_by_doing(const char * reads_file, unsigned int k, 
             nb_reads++;
         }
     }
+	if (nb_reads==0)
+	{
+		printf("no reads were useful, k is too large?\n");
+		exit(1);
+	}
     fclose(f_reads);
 }
 
@@ -610,6 +629,7 @@ void print_usage_and_exit(char * name) {
     fprintf (stderr, "\t -s edges_threshold: remove (k+1)mers (i.e. edges) seen < x times. Default: %d\n",weight_threshold);
     fprintf (stderr, "\t -g graph_format: 0 for DOT format, 1 for Kisssplice format. Default: %d\n",graph_format);
     fprintf (stderr, "\t -a: don't compute abundance of nodes (faster execution). Default: %s\n",dont_compute_nodes_abundance?"abundance is not computed":"abundance is computed");
+    fprintf (stderr, "\t -n: don't automatically add reverse edges. Default: %s\n",normalize_edges?"reverse edges are auto-added":"reverse edges are not auto-added");
     fprintf (stderr, "\t -h: prints this message and exit\n");
     exit(0);
 }
@@ -618,7 +638,7 @@ int main(int argc, char *argv[])
 {
     char c;
 
-    while ((c = getopt (argc, argv, "k:o:r:g:mt:s:vha")) != -1)
+    while ((c = getopt (argc, argv, "k:o:r:g:mt:s:vhan")) != -1)
         switch (c)
         {
         case 'k':
@@ -636,6 +656,9 @@ int main(int argc, char *argv[])
         case 'a':
             dont_compute_nodes_abundance = true;
             break;
+        case 'n':
+            normalize_edges = false;
+            break;
         case 'h':
             print_usage_and_exit(argv[0]);
             break;
@@ -646,7 +669,7 @@ int main(int argc, char *argv[])
 
     reads_filename=string(argv[optind]);
 
-    if (k+1>=sizeof(large_integer)*4)
+    if (k+1>sizeof(large_integer)*4)
     {
         printf("max value of k on this architecture: %d\n",sizeof(large_integer)*4-1);
         exit(1);

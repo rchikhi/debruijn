@@ -37,6 +37,7 @@ unsigned long get_next_read(FILE *file, char *read)
 	if ((unsigned long)(p-read)>MAX_TIGHT_SIZE)
 	{
 		printf("error loading read %s (%p, end of read %p) deduced len %ld\n",read,read,p,(unsigned long)(p-read));
+		exit(1);
 	}
 	return (unsigned long)(p-read); // readlen
 }

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "fasta.h"
+#include "kmers.h"
 
 // very basic!
 unsigned long get_next_read(FILE *file, char *read)

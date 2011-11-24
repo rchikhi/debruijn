@@ -319,8 +319,6 @@ void output_all_edges_with_abundances(string dst_edges_file_name)
     graph_edges_type::iterator it;
     unsigned long index = 0;
 
-	printf("%ld merged graph edges\n",graph_edges.size());
-
     for (it=graph_edges.begin(); it!=graph_edges.end(); it++)
     {
         unsigned long id1 = it->first.first.first;

@@ -1,0 +1,8 @@
+Software that constructs a de Bruijn graph from a set of reads in a FASTA file.
+Edges are the (k+1)-mers that appear in the reads, nodes are the k-mers.
+
+It's focused on memory efficiency: 32 bytes multiplied by the number of read (k<64)-mers (16 bytes if (k<32)-mers).
+
+written by Rayan Chikhi (http://www.irisa.fr/symbiose/rayan_chikhi)
+part of the KissSplice package (http://alcovna.genouest.org/kissplice/)
+

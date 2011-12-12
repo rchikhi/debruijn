@@ -158,7 +158,7 @@ void output_all_nodes_with_abundances(string dst_nodes_file_name)
         char * node = strdup((it->first).c_str());
         fprintf(nodes_file,"%ld\t%s\t",index,node);
         revcomp(node,k);
-        fprintf(nodes_file,"%s\t",node);
+        fprintf(nodes_file,"%s",node);
         free(node);
 
         vector<int>::iterator it_node;
@@ -166,17 +166,17 @@ void output_all_nodes_with_abundances(string dst_nodes_file_name)
         // test if the node is present in the reads set (i.e. has at least a non-empty abundance list)
         if (it->second.first.second.size()>0)
             for (it_node = it->second.first.second.begin(); it_node != it->second.first.second.end(); it_node++)
-                fprintf(nodes_file,"%d\t",*it_node);
+                fprintf(nodes_file,"\t%d",*it_node);
         else
             for (int i=0; i<nb_abundances[0]; i++)
-                fprintf(nodes_file,"0\t");
+                fprintf(nodes_file,"\t0");
 
         if (it->second.second.second.size()>0)
             for (it_node = it->second.second.second.begin(); it_node != it->second.second.second.end(); it_node++)
-                fprintf(nodes_file,"%d\t",*it_node);
+                fprintf(nodes_file,"\t%d",*it_node);
         else
             for (int i=0; i<nb_abundances[1]; i++)
-                fprintf(nodes_file,"0\t");
+                fprintf(nodes_file,"\t0");
 
         fprintf(nodes_file,"\n");
         index++;
@@ -324,24 +324,24 @@ void output_all_edges_with_abundances(string dst_edges_file_name)
         unsigned long id1 = it->first.first.first;
         unsigned long id2 = it->first.first.second;
         string label= it->first.second;
-        fprintf(edges_file,"%lu\t%lu\t%s\t",id1,id2,label.c_str());
+        fprintf(edges_file,"%lu\t%lu\t%s",id1,id2,label.c_str());
 
         vector<int>::iterator it_edge;
 
         // test if the node is present in the reads set (i.e. has at least a non-empty abundance list)
         if (it->second.first.size()>0)
             for (it_edge = it->second.first.begin(); it_edge != it->second.first.end(); it_edge++)
-                fprintf(edges_file,"%d\t",*it_edge);
+                fprintf(edges_file,"\t%d",*it_edge);
         else
             for (int i=0; i<nb_abundances[0]; i++)
-                fprintf(edges_file,"0\t");
+                fprintf(edges_file,"\t0");
 
         if (it->second.second.size()>0)
             for (it_edge = it->second.second.begin(); it_edge != it->second.second.end(); it_edge++)
-                fprintf(edges_file,"%d\t",*it_edge);
+                fprintf(edges_file,"\t%d",*it_edge);
         else
             for (int i=0; i<nb_abundances[1]; i++)
-                fprintf(edges_file,"0\t");
+                fprintf(edges_file,"\t0");
 
 
         fprintf(edges_file,"\n");

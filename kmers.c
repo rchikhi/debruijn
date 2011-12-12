@@ -60,7 +60,7 @@ void revcomp_tight(unsigned char s[])
 	}
 	if (len%2==1)
 		next1+=((3-((s[TIGHT_KMER_BYTESIZE+((len/2)/4)])>>(2*((len/2)%4))))&3)<<(2*((len/2)%4));
-	if (next1+next2 || (len%2==0 && len%8!=0) || len%2==1) // fixme: horrible hack
+	if (next1+next2 || (len%2==0 && len%8!=0) || len%2==1) 
 		s[TIGHT_KMER_BYTESIZE+(len/2)/4]=next1+next2;
 }
 
@@ -415,10 +415,6 @@ void test_tight_kmers()
 	}
 	src[max_i]=0;
 
-// sample problematic cases
-//	strcpy(src,"AAAAAAGACGGGGGGGGGGGGGGGGGCAGTAAAAAAA");
-//	strcpy(src,"AAAAAATCTTATTCAGCAGTTTTTTGATGAGGTCGTAAA");
-//	strcpy(src,"CTTGCGCTAATTTTTTGTCATCAAACCTGT");
 //	strcpy(src,"ATTGATGCATTTTAACCTTAACCGTTTGGTTAGGGTA");
 	unsigned char dest[500];
 	unsigned char dest2[500];

@@ -167,10 +167,9 @@ large_integer normalize_kmer(large_integer kmer_long, unsigned int k)
 
 void insert_kmers_long(large_integer kmer_long, int thread_num)
 {
-    // kmers_long cannot hold that many elements.. try another library or make many small vectors?
     kmers_long[thread_num]->push_back(kmer_long);
     if (kmers_long[thread_num]->size()%20000000==0)
-        printf("inserted %d (possibly redundant) kmers\n",(int)kmers_long[thread_num]->size());
+        printf("inserted %ul (possibly redundant) kmers\n",kmers_long[thread_num]->size());
 }
 
 large_index_integer get_kmer_number(large_integer kmer_long)

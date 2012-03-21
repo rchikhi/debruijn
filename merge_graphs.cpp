@@ -114,6 +114,8 @@ error:
 // store nodes in a hash table, with values = ((id1,(abundance1a,abundance1b,..)),(id2,(abundance2a,abundance2b,..)))
 typedef pair<unsigned long,vector<int> > id_and_abundance_list ;
 typedef unordered_map<string, pair<id_and_abundance_list,id_and_abundance_list> > graph_nodes_type;
+// can be made much lighter by changing string to an byte array, following the last
+// message in http://www.dreamincode.net/forums/topic/112471-problem-with-unordered-map/
 graph_nodes_type graph_nodes;
 
 void hash_nodes_with_abundances(string nodes_file_name, int graph_number)

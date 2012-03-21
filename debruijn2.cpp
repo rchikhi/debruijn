@@ -57,11 +57,14 @@
 using namespace std;
 
 #define MAX_THREADS 1
-#ifdef _LP64
+
+//#define KMERS_OVER_32 // disabled to compare with trinity
+#if (defined KMERS_OVER_32 && defined _LP64)
 typedef __uint128_t large_integer;
 #else
 typedef uint64_t large_integer;
 #endif
+
 typedef uint64_t large_index_integer;
 typedef vector<large_integer> huge_vector;
 typedef int abundance_type;
@@ -78,6 +81,7 @@ unsigned int weight_threshold = 0;
 short graph_format = 1;
 bool dont_compute_nodes_abundance = false;
 bool normalize_edges = true;
+int partitions = 2;
 
 // hard-coded stuff
 string graph_file_suffix = ".graph";
@@ -162,7 +166,7 @@ large_integer normalize_kmer(large_integer kmer_long, unsigned int k)
     unsigned char kmer_tight[MAX_TIGHT_SIZE_TIGHT];
     large_kmer_unhash_to_tight(kmer_long,k,kmer_tight);
     normalize_kmer(kmer_tight);
-    return kmer_hash_from_tight(kmer_tight,len_tightk_plus_bytesize);
+    return large_kmer_hash_from_tight(kmer_tight,len_tightk_plus_bytesize);
 }
 
 void insert_kmers_long(large_integer kmer_long, int thread_num)
@@ -216,11 +220,12 @@ void sort_kmers(int thread_num)
 
 void insert_pairs_of_kmers(large_integer kmer_long_1, large_integer kmer_long_2, unsigned short weight, unsigned int k)
 {
-    // yes we are inserting ~2x too many kmers, but:
-    // - we cannot recover the information of which (k+1)mer is at the very beginning or very end of a read
-    // - since it's without their multiplicites, and coverage is likely to be >2, we are already upperbounded in memory by the first phase
-    insert_kmers_long(normalize_kmer(kmer_long_1,k),0);
-    insert_kmers_long(normalize_kmer(kmer_long_2,k),0);
+    // we cannot recover the information of which (k+1)mer is at the very beginning or very end of a read, so we have to test-or-insert both kmers
+    // FIXME: there is a bug here, is_kmer_present works only if the list is sorted, which is not the case here. well, we will insert 2x too many kmers at worst. the list will be sorted and redundancy-filtered later anyway, no big deal.
+	if (!is_kmer_present(kmer_long_1))
+	    insert_kmers_long(normalize_kmer(kmer_long_1,k),0);
+	if (!is_kmer_present(kmer_long_2))
+	    insert_kmers_long(normalize_kmer(kmer_long_2,k),0);
 }
 
 /*
@@ -261,7 +266,7 @@ void write_preliminary_edge(large_integer edge_long, unsigned short weight, int 
 }
 
 unsigned long nb_edges = 0;
-void create_edges(large_integer kmer_long_1, large_integer kmer_long_2, unsigned short weight, unsigned int k)
+void write_edge(large_integer kmer_long_1, large_integer kmer_long_2, unsigned short weight, unsigned int k)
 {
     unsigned char kmer_tight[MAX_TIGHT_SIZE_TIGHT];
     unsigned int len_tightk_plus_bytesize = (k / 4) + (k % 4 ? 1 : 0) + TIGHT_KMER_BYTESIZE;
@@ -274,20 +279,23 @@ void create_edges(large_integer kmer_long_1, large_integer kmer_long_2, unsigned
     bool kmer2_reversed = normalize_kmer(kmer_tight);
     kmer_long_2 = large_kmer_hash_from_tight(kmer_tight,len_tightk_plus_bytesize);
 
-	large_index_integer kmer_long_1_index = get_kmer_number(kmer_long_1);
-	large_index_integer kmer_long_2_index = get_kmer_number(kmer_long_2);
+    large_index_integer kmer_long_1_index = get_kmer_number(kmer_long_1);
+    large_index_integer kmer_long_2_index = get_kmer_number(kmer_long_2);
 
+	// kmer_long_1 and kmer_long_2 are raw,non-normalized kmers (normalize = pick reverse complement if it's lexically before)
+	// the label associated to each normalized kmer is R if the kmer has been reversed, else F
     string label = (string)(kmer1_reversed?"R":"F") + (string)(kmer2_reversed?"R":"F");
     print_edge(kmer_long_1_index,kmer_long_2_index,label,weight);
     nb_edges++;
 
-	// write revcomp normalized edge
-	if (normalize_edges)
-	{
-		string label = (string)(kmer1_reversed?"F":"R") + (string)(kmer2_reversed?"F":"R");
-    	print_edge(kmer_long_2_index,kmer_long_1_index,label,weight);
-	    nb_edges++;
-	}
+    // write revcomp normalized edge
+    if (normalize_edges)
+    {
+		// since kmer1 -> kmer2 with label (l1,l2), the reverse edge is always: (invert_label(l2),invert_label(l1))
+        string label = (string)(kmer2_reversed?"F":"R") + (string)(kmer1_reversed?"F":"R");
+        print_edge(kmer_long_2_index,kmer_long_1_index,label,weight);
+        nb_edges++;
+    }
 }
 
 
@@ -336,7 +344,7 @@ void count_kmer_abundance(large_integer kmer_long, int thread_num)
  *
  */
 
-void process_sequence_with(string sequence, unsigned int k, void operation(large_integer kmer_long, int thread_num))
+void process_sequence_with(string sequence, unsigned int k, void operation(large_integer kmer_long, int thread_num), int partition)
 {
     unsigned int len_tightk_plus_bytesize = (k / 4) + (k % 4 ? 1 : 0) + TIGHT_KMER_BYTESIZE;
 
@@ -362,12 +370,12 @@ void process_sequence_with(string sequence, unsigned int k, void operation(large
             // TODO: write kmer_hash_from_sequence directly
             to_tight_DNA((char *)kmer.c_str(),kmer_tight);
 
-            if (nb_threads!=1 && !is_my_kmer_tight_edition(kmer_tight,k,thread_num,nb_threads,0,1))
+            if ((nb_threads!=1 || partitions!=1) && !is_my_kmer_tight_edition(kmer_tight,k,thread_num,nb_threads,partition,partitions))
                 continue;
 
-            // if we normalize edges (because those k+1 mer are edges), we lose the distinction FF/RR and RF/FR 
-			if (normalize_edges)
-				normalize_kmer(kmer_tight);
+            // if we normalize edges (because those k+1 mer are edges), we lose the distinction FF/RR and RF/FR
+            if (normalize_edges)
+                normalize_kmer(kmer_tight);
 
             large_integer kmer_long=large_kmer_hash_from_tight(kmer_tight,len_tightk_plus_bytesize);
 
@@ -376,7 +384,7 @@ void process_sequence_with(string sequence, unsigned int k, void operation(large
     }
 }
 
-void process_kmers_from_reads_by_doing(const char * reads_file, unsigned int k, void operation(large_integer kmer_long, int thread_num))
+void process_kmers_from_reads_by_doing(const char * reads_file, unsigned int k, void operation(large_integer kmer_long, int thread_num), int partition)
 {
     FILE *f_reads;
     unsigned long nb_reads=0;
@@ -396,29 +404,30 @@ void process_kmers_from_reads_by_doing(const char * reads_file, unsigned int k, 
         string read_str(read);
         if (read_str.size()>=k)
         {
-            process_sequence_with(read_str, k, operation);
+            process_sequence_with(read_str, k, operation, partition);
             nb_reads++;
         }
     }
-	if (nb_reads==0)
-	{
-		printf("no reads were useful, k is too large?\n");
-		exit(1);
-	}
+    if (nb_reads==0)
+    {
+        printf("no reads were useful, k is too large?\n");
+        exit(1);
+    }
     fclose(f_reads);
 }
 
 
-void write_preliminary_edges(string out_prefix, int weight_threshold, int k)
+void write_preliminary_edges(string out_prefix, int weight_threshold, int k, int partition)
 {
     int thread_num=0;//omp_get_thread_num();
 
     sort_kmers(thread_num);
 
     FILE *dest;
-    dest = fopen((out_prefix+raw_edges_file_suffix).c_str(),"w");
+    const char *mode = partition==0?"w":"a";
+    dest = fopen((out_prefix+raw_edges_file_suffix).c_str(),mode);
 
-    printf("outputting preliminary edges\n");
+    printf("outputting preliminary edges for partition %d/%d\n",partition+1,partitions);
     unsigned short weight=1;
 
     huge_vector::iterator it = kmers_long[thread_num]->begin();
@@ -538,7 +547,7 @@ void compute_nodes_abundance(string nodes_without_abundance_file_name, string no
     node_abundances=(abundance_type*)calloc((kmers_long[0]->size()+1),sizeof(abundance_type));
 
     // can't use the edge information to compute abundance. so we resort to the reads
-    process_kmers_from_reads_by_doing(reads_filename.c_str(), k, count_kmer_abundance);
+    process_kmers_from_reads_by_doing(reads_filename.c_str(), k, count_kmer_abundance,0);
 
     // read the file again and this time write with abundance
     nodes_file = fopen(nodes_with_abundance_file_name.c_str(),"w");
@@ -553,14 +562,23 @@ void compute_nodes_abundance(string nodes_without_abundance_file_name, string no
 
 void debruijn()
 {
-    tables_init();
 
-    // process all the reads and output a list of all (k+1)mers seen in the reads, in the form: (kmer_1,kmer_2, number of times kmer is seen)
-    process_kmers_from_reads_by_doing(reads_filename.c_str(), k+1, insert_kmers_long);
-    write_preliminary_edges(out_prefix,weight_threshold,k);
+    int partition;
+    for (partition = 0 ; partition < partitions; partition++)
+    {
+        tables_init();
 
-    // clear k+1 mers
-    tables_free();
+        // process all the reads and populates a list of all (k+1)mers seen in the reads
+        process_kmers_from_reads_by_doing(reads_filename.c_str(), k+1, insert_kmers_long, partition);
+    
+        // output the filtered list of (k+1)-mers, in the form: (kmer_1,kmer_2, number of times kmer is seen)
+        // also remove (k+1)-mers seen less than weight_threshold times
+        write_preliminary_edges(out_prefix, weight_threshold, k, partition);
+
+        // clear k+1 mers
+        tables_free();
+    }
+    partitions = 1; // no more partitioning from here
 
     // start a graph
     string graph_file_name=(out_prefix+graph_file_suffix);
@@ -588,7 +606,7 @@ void debruijn()
 
     // output the list of edges, which are (index(kmer_1),index(mer_2),label of both mers)
     printf("writing edges\n");
-    read_preliminary_edges_and_do(out_prefix, k, create_edges);
+    read_preliminary_edges_and_do(out_prefix, k, write_edge);
     printf(" wrote %ld edges (= distinct (k+1)-mers)\n",nb_edges);
 
     if (graph_format==0)
@@ -612,9 +630,14 @@ void debruijn()
         string nodes_with_abundance_file_name=(out_prefix+nodes_with_abundance_file_suffix);
         compute_nodes_abundance(nodes_without_abundance_file_name,nodes_with_abundance_file_name,k);
     }
-	else
-		printf("node abundances are not computed\n");
+    else
+        printf("node abundances are not computed\n");
 
+
+    if (dont_compute_nodes_abundance){ // change the suffix of the ouput to have only .nodes.
+    	string cmd="mv "+nodes_without_abundance_file_name+" "+out_prefix+nodes_with_abundance_file_suffix;
+    	system(cmd.c_str());
+    }
     printf("finished building the de Bruijn graph in %s%s\n",out_prefix.c_str(),(graph_format==0)?graph_file_suffix.c_str():("["+nodes_with_abundance_file_suffix+"/"+edges_file_suffix+"]").c_str());
 }
 
@@ -629,6 +652,7 @@ void print_usage_and_exit(char * name) {
     fprintf (stderr, "\t -g graph_format: 0 for DOT format, 1 for Kisssplice format. Default: %d\n",graph_format);
     fprintf (stderr, "\t -a: don't compute abundance of nodes (faster execution). Default: %s\n",dont_compute_nodes_abundance?"abundance is not computed":"abundance is computed");
     fprintf (stderr, "\t -n: don't automatically add reverse edges. Default: %s\n",normalize_edges?"reverse edges are auto-added":"reverse edges are not auto-added");
+    fprintf (stderr, "\t -p nb_part: number of partitions. Default: %d\n",partitions);
     fprintf (stderr, "\t -h: prints this message and exit\n");
     exit(0);
 }
@@ -637,7 +661,7 @@ int main(int argc, char *argv[])
 {
     char c;
 
-    while ((c = getopt (argc, argv, "k:o:r:g:mt:s:vhan")) != -1)
+    while ((c = getopt (argc, argv, "k:o:r:g:mt:s:vhanp:")) != -1)
         switch (c)
         {
         case 'k':
@@ -658,6 +682,9 @@ int main(int argc, char *argv[])
         case 'n':
             normalize_edges = false;
             break;
+        case 'p':
+            partitions = atoi(optarg);
+            break;
         case 'h':
             print_usage_and_exit(argv[0]);
             break;
@@ -670,7 +697,7 @@ int main(int argc, char *argv[])
 
     if (k+1>sizeof(large_integer)*4)
     {
-        printf("max value of k on this architecture: %d\n",sizeof(large_integer)*4-1);
+        printf("max value of k on this compiled version: %d\n",sizeof(large_integer)*4-1);
         exit(1);
     }
 

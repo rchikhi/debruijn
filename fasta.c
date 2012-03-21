@@ -27,16 +27,18 @@ unsigned long get_next_read(FILE *file, char *read)
 		return 0;
 	}
 	p = (char *)strchr((char*)read, '\n');
-        if (p) *p = '\0';
+    if (p) *p = '\0';
 	nextchar=fgetc(file); // cheat, reads the next '>' character in order to induce EOF
 	if (nextchar!='>' && !feof(file))
 	{
 		printf("error: bad input (line='%s', read='%s').\n btw this program cannot process genomes. the input file must be reads, of length <%d, one line per read\n",line,read,MAX_TIGHT_SIZE);
 		exit(1);
 	}
+	if (feof(file)) // end of file, no newline at end of read, return compute read length
+		return strlen(read);
 	if ((unsigned long)(p-read)>MAX_TIGHT_SIZE)
 	{
-		printf("error loading read %s (%p, end of read %p) deduced len %ld\n",read,read,p,(unsigned long)(p-read));
+		printf("error loading read %s (%p, end of read %p) deduced read length %ld. The read is either too long (> %d), or missing a newline at the end (\\\n)?\n",read,read,p,(unsigned long)(p-read),MAX_TIGHT_SIZE);
 		exit(1);
 	}
 	return (unsigned long)(p-read); // readlen

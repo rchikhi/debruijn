@@ -1,5 +1,6 @@
 Software that constructs the de Bruijn graph of a set of reads (FASTA file).
 Edges are the (k+1)-mers that appear in the reads, nodes are the k-mers.
+It returns a graph in the DOT format (can be visualized by most software, including Zgrviewer and Gephi). 
 This structure is useful for many next-generation sequencing applications,
 including de novo genome assembly.
 

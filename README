@@ -3,14 +3,19 @@ Edges are the (k+1)-mers that appear in the reads, nodes are the k-mers.
 This structure is useful for many next-generation sequencing applications,
 including de novo genome assembly.
 
-For k <= 32, this implementation uses max(64*N/p,64*G) bits of memory, where:
-- N is the number of k-mers present in the reads (N = number of reads * (read length - k +1))  
-- G is the number of different k-mers in the genome (G = roughly the size of the genome). 
+For k <= 32, this implementation uses 
+
+            max( 64*N/p, 64*G )
+
+bits of memory, where:
+
+- N is the number of k-mers present in the reads (N = number of reads * (read length - k + 1))  
+- G is the number of distinct k-mers in the genome (G = roughly the size of the genome). 
 - p is the number of passes (specified by option -p in the software). 
 
-For 3 billion k-mers, assuming sufficiently many passes, it should construct the graph in 24 Gb of memory. 
+For 3 billion distinct k-mers, assuming sufficiently many passes, it should construct the graph in 24 Gb of memory. 
 
-For 32 <= k <= 64, the constant 64 becomes 128. K-mers larger than 64 nucleotides are not supported.
+Note: for 32 <= k <= 64, the constant 64 becomes 128. K-mers larger than 64 nucleotides are not supported.
 
 written by Rayan Chikhi (http://www.irisa.fr/symbiose/rayan_chikhi)
 part of the KisSplice package (http://alcovna.genouest.org/kissplice/)

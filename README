@@ -1,6 +1,9 @@
-Software that constructs the de Bruijn graph of a set of reads (FASTA file).
+Software that constructs the de Bruijn graph of a set of reads (FASTA or FASTQ file).
 Edges are the (k+1)-mers that appear in the reads, nodes are the k-mers.
-It returns a graph in the DOT format (can be opened by most applications, including Zgrviewer and Gephi). 
+No distintion is made between a k-mer (resp. (k+1)-mer) and its reverse-complement.
+It returns a graph in the KisSplice format (ad-hoc) or DOT format (can be opened by 
+most applications, including Zgrviewer and Gephi). 
+
 The de Bruijn graph is useful for many next-generation sequencing applications,
 including de novo genome assembly and variant detection.
 

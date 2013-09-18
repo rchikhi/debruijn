@@ -1,10 +1,10 @@
-all: debruijn2 merge_graphs
+all: debruijn3 merge_graphs
 
-debruijn2: fasta.c kmers.c debruijn2.cpp kmers.h fasta.h
-	g++ -Wall -g fasta.c kmers.c debruijn2.cpp -fopenmp -o debruijn2 
+debruijn3: fasta.c kmers.c debruijn3.cpp kmers.h fasta.h
+	g++ -Wall -g fasta.c kmers.c debruijn3.cpp -fopenmp -o $@
 
 merge_graphs: fasta.c kmers.c merge_graphs.cpp kmers.h fasta.h
-	g++ -Wall -g fasta.c kmers.c merge_graphs.cpp -fopenmp -o merge_graphs
+	g++ -Wall -g fasta.c kmers.c merge_graphs.cpp -fopenmp -o $@
 
 clean:
-	rm -f debruijn2 merge_graphs *.o
+	rm -f debruijn3 merge_graphs *.o

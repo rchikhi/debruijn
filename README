@@ -1,3 +1,11 @@
+Note
+===
+
+This software is quite old now. There are better techniques nowadays. A newer version (debruijn-v4), based on Minia, can now be downloaded inside the KisSplice package (http://kissplice.prabi.fr/download/). 
+
+Debruijn
+===
+
 Software that constructs the de Bruijn graph of a set of reads (FASTA or FASTQ file).
 Edges are the (k+1)-mers that appear in the reads, nodes are the k-mers.
 No distintion is made between a k-mer (resp. (k+1)-mer) and its reverse-complement.
@@ -23,5 +31,3 @@ Note: for 32 <= k <= 64, the constant 64 becomes 128. K-mers larger than 64 nucl
 
 written by Rayan Chikhi (http://www.irisa.fr/symbiose/rayan_chikhi)
 part of the KisSplice package (http://alcovna.genouest.org/kissplice/)
-
-Note: This software is quite old. A newer version (based on Minia) is now used in KisSplice.

@@ -1,7 +1,7 @@
 Note
 ===
 
-This software is quite old now. There are better techniques nowadays. A newer version (debruijn-v4), based on Minia, can now be downloaded inside the KisSplice package (http://kissplice.prabi.fr/download/). 
+This software is quite old (2011). There are better techniques nowadays. A better de Bruijn graph construction (named debruijn-v4), based on Minia, is distributed in the KisSplice package (http://kissplice.prabi.fr/download/). 
 
 Debruijn
 ===

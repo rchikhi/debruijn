@@ -2,7 +2,7 @@ Note
 ===
 
 This software is quite old (2011). There are better techniques nowadays. A better de Bruijn graph construction algorithm is BCALM: https://github.com/Malfoy/bcalm (readable Python code here: https://github.com/rchikhi/python-bcalm).
-Another is debruijn-v4, based on Minia, distributed in the KisSplice package (http://kissplice.prabi.fr/download/). 
+Another is an implementation included in the Genome-scale Algorithm Deign book (Chapter 13.2, http://www.genome-scale.info/implementations.html). 
 
 Debruijn
 ===
